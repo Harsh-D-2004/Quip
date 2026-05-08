@@ -1,0 +1,92 @@
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ─── Build outputs ───────────────────────────────────────────────────────────
+dist/
+dist-electron/
+build/
+out/
+
+# quip-backend compiled JS
+quip-backend/dist/
+
+# quip-frontend Vite + Electron build
+quip-frontend/dist/
+quip-frontend/dist-electron/
+quip-frontend/release/
+
+# ─── Environment / secrets ───────────────────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+quip-backend/.env
+quip-frontend/.env
+
+# ─── Runtime data (quip-backend) ─────────────────────────────────────────────
+quip-backend/src/transcripts/
+quip-backend/transcripts/
+
+# Chrome profile contains cookies & credentials — never commit
+quip-backend/src/chrome-profile/
+quip-backend/chrome-profile/
+
+# Steel Browser auth tokens
+quip-backend/steel-session*
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── TypeScript ──────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── Editor / OS ─────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Electron builder ────────────────────────────────────────────────────────
+quip-frontend/release/
+quip-frontend/*.dmg
+quip-frontend/*.exe
+quip-frontend/*.AppImage
+quip-frontend/*.deb
+quip-frontend/*.snap
+quip-frontend/*.blockmap
+
+# ─── Playwright ──────────────────────────────────────────────────────────────
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+# Keep docker-compose.yml tracked; ignore generated volumes/overrides
+docker-compose.override.yml
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+*.local
+.cache/
+.temp/
+tmp/
