@@ -1,0 +1,35 @@
+{
+  "name": "quip",
+  "productName": "Quip",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quip - AI meeting notes for Google Meet",
+  "author": {
+    "name": "Out of the Blue",
+    "email": "hello@outoftheblue.ai"
+  },
+  "license": "UNLICENSED",
+  "main": "quip-desktop/main.js",
+  "scripts": {
+    "postinstall": "npm --prefix quip-backend install && npm --prefix quip-frontend install",
+    "build": "npm run build:service && npm run build:renderer",
+    "build:service": "npm --prefix quip-backend run build",
+    "build:renderer": "npm --prefix quip-frontend run build",
+    "dev": "concurrently -k -n renderer,service,shell -c cyan,yellow,magenta \"npm:dev:renderer\" \"npm:dev:service\" \"npm:dev:shell\"",
+    "dev:renderer": "npm --prefix quip-frontend run dev",
+    "dev:service": "npm --prefix quip-backend run watch",
+    "dev:shell": "wait-on http://localhost:8080 quip-backend/dist/index.js && electron .",
+    "start": "electron .",
+    "stage:browsers": "node scripts/stage-browsers.mjs",
+    "stage:service": "node scripts/stage-service.mjs",
+    "stage": "npm run stage:browsers && npm run stage:service",
+    "dist": "npm run build && npm run stage && electron-builder --linux --config electron-builder.yml",
+    "clean": "rm -rf release build-staging quip-backend/dist quip-frontend/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.3"
+  }
+}

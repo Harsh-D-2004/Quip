@@ -1,16 +1,20 @@
 import fs from "fs";
 import { OpenRouter } from "@openrouter/sdk";
 import Logger from "../../helpers/logger";
-import { getTranscriptsFilePath } from "../../helpers/captionsFile";
+import { resolveTranscriptsFilePath } from "../../helpers/captionsFile";
 import path from "path";
-import "dotenv/config";
 import PDFDocument from "pdfkit";
-
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPEN_ROUTER_API_KEY,
-});
+import { getSettings, requireApiKey } from "../../helpers/config";
 
 let logger: any = new Logger("SummaryService");
+
+/**
+ * Built per call rather than at import time: the key arrives from the desktop
+ * shell after this module has loaded, and the user can change it at any point.
+ */
+function client(): OpenRouter {
+  return new OpenRouter({ apiKey: requireApiKey() });
+}
 
 function systemPrompt(context: string): string {
   return `
@@ -51,6 +55,43 @@ ${context}
 `;
 }
 
+export interface NormalisedSummary {
+  meetingSummary: string;
+  keyDiscussionPoints: string[];
+  participantContributions: Record<string, string>;
+  participantCount: number;
+}
+
+/**
+ * summary.json has been written in two shapes over time: snake_case (what the
+ * model returns) and camelCase (older files). The PDF generator reads whichever
+ * it is handed, so normalise here rather than at every call site.
+ */
+export function normaliseSummary(raw: any): NormalisedSummary {
+  const contributions: Record<string, string> = {};
+
+  if (Array.isArray(raw?.participants)) {
+    for (const p of raw.participants) {
+      if (p && typeof p === "object" && typeof p.name === "string") {
+        contributions[p.name] = typeof p.summary === "string" ? p.summary : "";
+      }
+    }
+  } else if (raw?.participants && typeof raw.participants === "object") {
+    Object.assign(contributions, raw.participants);
+  } else if (raw?.participantContributions && typeof raw.participantContributions === "object") {
+    Object.assign(contributions, raw.participantContributions);
+  }
+
+  const count = Number(raw?.participant_count ?? raw?.participantCount);
+
+  return {
+    meetingSummary: raw?.summary ?? raw?.meetingSummary ?? "",
+    keyDiscussionPoints: raw?.key_points ?? raw?.keyDiscussionPoints ?? [],
+    participantContributions: contributions,
+    participantCount: Number.isFinite(count) ? count : Object.keys(contributions).length,
+  };
+}
+
 function extractJson(raw: string) {
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("No JSON found");
@@ -58,7 +99,7 @@ function extractJson(raw: string) {
 }
 
 export async function summaryService(): Promise<any> {
-  const footpath = getTranscriptsFilePath();
+  const footpath = resolveTranscriptsFilePath();
   const contextPath = path.join(footpath, "transcription.txt");
   let text = fs.readFileSync(contextPath, "utf8");
   logger.info("summaryService", "Captions file read successfully");
@@ -66,8 +107,8 @@ export async function summaryService(): Promise<any> {
   const prompt = systemPrompt(text);
   logger.info("summaryService", "Prompt generated successfully");
 
-  const completion = await openRouter.chat.send({
-    model: "nousresearch/hermes-3-llama-3.1-405b:free",
+  const completion = await client().chat.send({
+    model: getSettings().model,
     messages: [
       {
         role: "user",
@@ -109,8 +150,13 @@ export async function summaryService(): Promise<any> {
                     type: "string",
                     description: "Full name of the participant.",
                   },
+                  summary: {
+                    type: "string",
+                    description:
+                      "What this participant spoke about, in one or two sentences.",
+                  },
                 },
-                required: ["name"],
+                required: ["name", "summary"],
                 additionalProperties: false,
               },
             },
@@ -151,11 +197,11 @@ export async function summaryService(): Promise<any> {
 
 export async function createSummaryReport() {
   try {
-    const footpath = getTranscriptsFilePath();
+    const footpath = resolveTranscriptsFilePath();
     const properPath = path.join(footpath, "summary.json");
 
     const ret = fs.readFileSync(properPath, "utf8");
-    const data = JSON.parse(ret);
+    const data = normaliseSummary(JSON.parse(ret));
 
     logger.info(
       "createSummaryReport",
@@ -171,7 +217,12 @@ export async function createSummaryReport() {
 
     logger.info("createSummaryReport", `Summary report in progress`);
 
-    doc.pipe(fs.createWriteStream(pdfPath));
+    const out = fs.createWriteStream(pdfPath);
+    const written = new Promise<void>((resolve, reject) => {
+      out.on("finish", () => resolve());
+      out.on("error", reject);
+    });
+    doc.pipe(out);
 
     // ============================
     // HEADER
@@ -241,12 +292,16 @@ export async function createSummaryReport() {
 
     doc.fontSize(11).lineGap(3);
 
-    (
-      Object.entries(data.participantContributions) as [string, string][]
-    ).forEach(([name, contribution]) => {
+    const contributions = Object.entries(data.participantContributions);
+    if (contributions.length === 0) {
+      doc.font("Helvetica").text("No individual contributions were identified.", {
+        indent: 18,
+      });
+    }
+    contributions.forEach(([name, contribution]) => {
       doc.font("Helvetica-Bold").text(name);
 
-      doc.font("Helvetica").text(contribution, {
+      doc.font("Helvetica").text(contribution || "-", {
         indent: 18,
         align: "justify",
       });
@@ -288,6 +343,7 @@ export async function createSummaryReport() {
     // FINALIZE
     // ============================
     doc.end();
+    await written;
 
     logger.info(
       "createSummaryReport",

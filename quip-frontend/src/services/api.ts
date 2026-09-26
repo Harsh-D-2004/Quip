@@ -1,14 +1,53 @@
 import { logger } from "@/lib/logger";
 import axios from "axios";
-// API configuration - Update these URLs to match your actual backend endpoints
+
+/**
+ * The service listens on an OS-assigned port (so two copies of Quip cannot
+ * collide), and the desktop shell tells us which one over the preload bridge.
+ * The hardcoded fallback is only for running the UI in a plain browser against
+ * `npm --prefix quip-backend start` with PORT=3000.
+ */
+const BROWSER_DEV_FALLBACK =
+  import.meta.env.VITE_QUIP_API_BASE ?? "http://127.0.0.1:3000";
+
+let baseUrl = BROWSER_DEV_FALLBACK;
+let resolving: Promise<string> | null = null;
+
+export async function initApiBase(): Promise<string> {
+  if (!window.quip) {
+    logger.api.info(`No desktop bridge - using ${baseUrl}`);
+    return baseUrl;
+  }
+  if (!resolving) {
+    resolving = window.quip
+      .apiBase()
+      .then((resolved) => {
+        baseUrl = resolved;
+        logger.api.info(`API base resolved: ${resolved}`);
+        return resolved;
+      })
+      .catch((err) => {
+        resolving = null;
+        logger.api.error("Could not resolve API base", { error: String(err) });
+        throw err;
+      });
+  }
+  return resolving;
+}
+
+export const apiBase = () => baseUrl;
+
 export const API_CONFIG = {
-  BASE_URL: "http://localhost:3000",
-  
+  get BASE_URL() {
+    return baseUrl;
+  },
+
   ENDPOINTS: {
     BOT_LOGIN: "/bot-profile/login",
     JOIN_MEETING: "/google-bot/join",
     LEAVE_MEETING: "/google-bot/leave",
     SUMMARIZE: "/ai/summarize",
+    SETTINGS: "/settings",
   },
 };
 
@@ -16,6 +55,15 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  /** Machine-readable reason, e.g. NO_API_KEY / NO_TRANSCRIPT. */
+  code?: string;
+  status?: number;
+}
+
+export interface ServiceSettings {
+  openRouterKeyConfigured: boolean;
+  managedByDesktop: boolean;
+  model: string;
 }
 
 export interface MeetingJoinResponse {
@@ -82,9 +130,11 @@ async function apiCall<T>(
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.message || `Request failed with status ${response.status}`;
       logger.api.error(`Response: ${response.status} Error`, { endpoint, error: errorMessage });
-      return { 
-        success: false, 
-        error: errorMessage 
+      return {
+        success: false,
+        error: errorMessage,
+        code: errorData.code,
+        status: response.status,
       };
     }
   } catch (error) {
@@ -155,8 +205,43 @@ export const api = {
   },
 
   async getTranscript(): Promise<{ transcript: string }> {
-    const res = await axios.get("http://localhost:3000/ai/transcript");
+    const res = await axios.get(`${API_CONFIG.BASE_URL}/ai/transcript`);
     logger.meeting.info("Fetched transcript");
     return res.data;
-  }
+  },
+
+  getSettings: async (): Promise<ApiResponse<ServiceSettings>> =>
+    apiCall<ServiceSettings>(API_CONFIG.ENDPOINTS.SETTINGS),
+
+  /**
+   * Writes the OpenRouter key. In the packaged app this goes through the desktop
+   * bridge so the key is validated by the service and then persisted in the OS
+   * keychain. In a plain browser it falls back to the service's HTTP route, which
+   * only holds it for the lifetime of that process.
+   */
+  setApiKey: async (
+    key: string
+  ): Promise<{ success: boolean; message?: string; persisted: boolean; encrypted?: boolean; label?: string }> => {
+    if (window.quip) {
+      const result = await window.quip.setApiKey(key);
+      return {
+        success: result.success,
+        message: result.message,
+        persisted: !!result.persisted,
+        encrypted: result.encrypted,
+        label: result.label,
+      };
+    }
+
+    const result = await apiCall<{ message?: string; label?: string }>(
+      `${API_CONFIG.ENDPOINTS.SETTINGS}/api-key`,
+      { method: "POST", body: JSON.stringify({ apiKey: key }) }
+    );
+    return {
+      success: result.success,
+      message: result.error,
+      persisted: false,
+      label: result.data?.label,
+    };
+  },
 };

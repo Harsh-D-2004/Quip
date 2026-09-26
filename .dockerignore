@@ -1,0 +1,7 @@
+# Keep the build context to quip-landing only - everything else is either the
+# desktop app or hundreds of megabytes of build output.
+*
+!quip-landing
+
+quip-landing/node_modules
+quip-landing/dist

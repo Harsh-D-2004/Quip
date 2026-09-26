@@ -1,17 +1,19 @@
 {
-  "name": "ai-notetaker",
+  "name": "quip-service",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "watch": "tsc --watch --preserveWatchOutput",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "clean": "rm -rf dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Quip service: Google Meet capture bot + summarisation API",
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.10.1",
     "@types/pdfkit": "^0.17.4",
@@ -20,16 +22,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@google/genai": "^1.33.0",
     "@openrouter/sdk": "^0.3.7",
-    "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "pdfkit": "^0.17.2",
-    "playwright": "^1.56.1",
-    "steel-sdk": "^0.15.0",
+    "playwright": "^1.63.0",
     "uuid": "^13.0.0"
-  },
-  "type": "module"
+  }
 }

@@ -1,0 +1,17 @@
+# Render blueprint for the landing site.
+#
+# Render builds the root Dockerfile, whose .dockerignore limits the context to
+# quip-landing/ - the desktop app and the staged Chromium never get uploaded.
+#
+# No environment variables are required: Render injects PORT and the nginx
+# template listens on it, and the installer download URL is baked into the
+# bundle at build time (quip-landing/src/site.config.ts).
+services:
+  - type: web
+    name: quip-landing
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true

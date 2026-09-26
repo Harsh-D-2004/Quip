@@ -1,17 +1,18 @@
 import { chromium } from "playwright";
 import fs from "fs";
 import Logger from "../../helpers/logger";
+import { storageStatePath } from "../../helpers/paths";
 
 class BotProfile {
   private logger = new Logger("BotProfile");
   userAgent: string = "";
-  storage_path: string = "./storage-state.json";
+  storage_path: string = storageStatePath();
 
   constructor() {
-    this.logger.info("constructor", "Removing existing storage state file");
-    fs.rm("storage-state.json", (err) => {
+    this.logger.info("constructor", `Removing existing storage state file: ${this.storage_path}`);
+    fs.rm(this.storage_path, { force: true }, (err) => {
       if (err) {
-        this.logger.warn("constructor", "Failed to remove storage-state.json (file may not exist)", err);
+        this.logger.warn("constructor", "Failed to remove storage state file", err);
       } else {
         this.logger.info("constructor", "Storage state file removed successfully");
       }
@@ -24,6 +25,7 @@ class BotProfile {
   async login() {
     this.logger.info("login", "Launching browser for Google login");
     const browser = await chromium.launch({
+      channel: "chromium",
       headless: false,
       args: [
         "--disable-blink-features=AutomationControlled",
@@ -61,6 +63,9 @@ class BotProfile {
     try {
       this.logger.info("login", "Waiting for user to complete login (close page when done)...");
       await new Promise<Error | boolean>((resolve, reject) => {
+        // If the user closes the whole window (or Chromium dies) the page
+        // "close" event can be missed - without this the HTTP request hangs.
+        browser.once("disconnected", () => resolve(false));
         page.once("close", async () => {
           this.logger.info("login", "Page closed by user - saving authentication state");
           try {

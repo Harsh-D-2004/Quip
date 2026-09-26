@@ -1,5 +1,4 @@
 import {
-  chromium,
   type Browser,
   type BrowserContext,
   type Page,
@@ -9,6 +8,8 @@ import { SELECTORS } from "../../helpers/selectors";
 import Logger from "../../helpers/logger";
 import path from 'path'
 import {setupRootFilePath , getTranscriptsFilePath} from "../../helpers/captionsFile"
+import { storageStatePath } from "../../helpers/paths";
+import { getBrowser } from "./browser";
 
 class MeetBot {
   private logger = new Logger("MeetBot");
@@ -23,17 +24,20 @@ class MeetBot {
 
   async init() {
     try {
-      this.logger.info("init", "Creating required directories if not present...");
-      this.logger.info("init", "Connecting to Chrome DevTools Protocol...");
-      this.browser = await chromium.connectOverCDP("http://localhost:9223");
+      this.logger.info("init", "Acquiring Chromium...");
+      this.browser = await getBrowser();
 
-      this.logger.info("init", "Reading storage state...");
-      const state = JSON.parse(fs.readFileSync("storage-state.json", "utf8"));
+      const statePath = storageStatePath();
+      this.logger.info("init", `Reading storage state from ${statePath}`);
+      if (!fs.existsSync(statePath)) {
+        throw new Error("Not signed in to Google yet - run the login step first");
+      }
+      const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
       if (!state.cookies) throw new Error("No cookies found in storage state");
 
       this.logger.info("init", "Creating browser context with storage state");
       this.context = await this.browser.newContext({
-        storageState: "./storage-state.json",
+        storageState: statePath,
       });
 
       this.logger.info(
@@ -56,7 +60,7 @@ class MeetBot {
     } catch (err) {
       this.logger.error(
         "init",
-        "Failed to connect to CDP or initialize context",
+        "Failed to launch Chromium or initialize context",
         err
       );
       return false;
@@ -233,7 +237,6 @@ class MeetBot {
 
       try {
         this.logger.info("joinMeeting", "Attempting to turn on captions");
-        await this.page.screenshot({ path: "2.png" });
         await this.page
           .getByRole(
             SELECTORS.ROLE_TURN_ON_CAPTIONS_BY_ROLE.role,
@@ -323,11 +326,11 @@ class MeetBot {
       this.logger.info("cleanup", "Browser context closed");
     }
 
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
-      this.logger.info("cleanup", "Browser connection closed");
-    }
+    // The Browser handle is a process-wide singleton reused across meetings;
+    // closeBrowser() on service shutdown is what actually kills Chromium.
+    this.browser = null;
+
+    this.page = null;
 
     this.logger.info("cleanup", "Cleanup completed successfully");
   }

@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { api } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
+import SettingsButton from "@/components/SettingsButton";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -171,8 +172,10 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <footer className="relative py-4 text-center text-xs text-muted-foreground font-mono">
-        Quip • Secure • Private • Intelligent
+      <footer className="relative py-4 flex items-center justify-center gap-4 text-xs text-muted-foreground font-mono">
+        <span>Quip • Secure • Private • Intelligent</span>
+        <span className="opacity-40">|</span>
+        <SettingsButton />
       </footer>
     </div>
   );

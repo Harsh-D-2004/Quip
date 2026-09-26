@@ -17,10 +17,13 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { api, mapSummaryResponse, SummaryResponse } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
+import { useApiKey } from "@/hooks/useApiKey";
+import SettingsButton from "@/components/SettingsButton";
 
 const SummaryPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { openPrompt } = useApiKey();
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -66,10 +69,21 @@ const SummaryPage: React.FC = () => {
             participantCount: 0,
             notes : ""
           });
-          toast({
-            title: "Server Error",
-            description: "API unavailable, showing sample summary data.",
-          });
+
+          if (response.code === "NO_API_KEY") {
+            openPrompt();
+            toast({
+              title: "OpenRouter key required",
+              description: "Add your API key to generate summaries.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Could not summarise this meeting",
+              description: response.error || "The summarisation service returned an error.",
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
         logger.meeting.error("Failed to fetch summary", { error });

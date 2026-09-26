@@ -1,5 +1,3 @@
-import type { Request, Response } from "express";
-import fs from "fs";
 import BotProfile from "../services/google_meet_bot/bot_login";
 import Logger from "../helpers/logger";
 

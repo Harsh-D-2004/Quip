@@ -1,6 +1,0 @@
-services:
-  api:
-    image: ghcr.io/steel-dev/steel-browser-api:latest
-    ports:
-      - "3000:3000"
-      - "9223:9223"

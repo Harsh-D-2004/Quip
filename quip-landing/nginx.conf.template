@@ -1,0 +1,40 @@
+# Rendered at container start by nginx:alpine's own entrypoint, which runs
+# envsubst over /etc/nginx/templates/*.template. ${PORT} is what makes this
+# image portable: Render (and Cloud Run, and Fly) inject the port to listen on
+# rather than letting the container choose one.
+server {
+    listen       ${PORT};
+    server_name  _;
+    root         /usr/share/nginx/html;
+    index        index.html;
+
+    sendfile           on;
+    tcp_nopush         on;
+
+    gzip              on;
+    gzip_types        text/css application/javascript image/svg+xml;
+    gzip_min_length   1024;
+
+    # Hashed Vite assets are immutable; the HTML must never be cached or a
+    # deploy leaves people on the old bundle.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Product screenshots are content-hashed by name only, so cache modestly.
+    location /screens/ {
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location = /healthz {
+        access_log off;
+        return 200 "ok\n";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}

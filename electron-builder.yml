@@ -1,0 +1,87 @@
+appId: ai.outoftheblue.quip
+productName: Quip
+copyright: Copyright © 2026 Out of the Blue
+
+directories:
+  output: release
+
+# What goes inside app.asar. The renderer is remapped so main.js can load it at
+# ../renderer/index.html; everything else is the Electron shell.
+files:
+  - package.json
+  - quip-desktop/**/*
+  - from: quip-frontend/dist
+    to: renderer
+    filter:
+      - "**/*"
+
+# Outside the asar, under resources/. The service is a real Node process, so it
+# needs a real on-disk node_modules; Chromium must not live inside an archive.
+extraResources:
+  # The payload is build-staging/service/app - see scripts/stage-service.mjs for
+  # why the extra level is required for node_modules to be copied at all.
+  - from: build-staging/service
+    to: service
+    filter:
+      - "**/*"
+      - "!**/*.map"
+  - from: build-staging/ms-playwright
+    to: ms-playwright
+    filter:
+      - "**/*"
+
+asar: true
+
+npmRebuild: false
+
+linux:
+  target:
+    - target: deb
+      arch: [x64]
+  category: Office
+  synopsis: AI meeting notes for Google Meet
+  description: >-
+    Quip joins your Google Meet calls, captures the live captions and turns them
+    into a summary and a PDF report.
+  desktop:
+    entry:
+      Name: Quip
+      Comment: AI meeting notes for Google Meet
+      Categories: Office;AudioVideo;
+  # See the ozone note in quip-desktop/main.js: the flag has to be a real command
+  # line argument, so the launcher carries it.
+  executableArgs:
+    - "--ozone-platform=x11"
+  artifactName: quip_${version}_${arch}.${ext}
+
+deb:
+  # Chromium's own runtime libraries: without these the bundled browser dies with
+  # a bare dynamic-linker error on a clean Debian/Ubuntu box.
+  #
+  # The "a | b" alternatives cover Debian's 64-bit time_t transition, which
+  # renamed several of these (libgtk-3-0 -> libgtk-3-0t64 and friends). Ubuntu
+  # 24.04+ ships only the t64 name, so pinning the old name alone makes
+  # `dpkg -i` fail with unmet dependencies on every current release - verified
+  # against Ubuntu 26.04, where libgtk-3-0 and libatspi2.0-0 do not exist.
+  depends:
+    - libgtk-3-0 | libgtk-3-0t64
+    - libatspi2.0-0 | libatspi2.0-0t64
+    - libasound2 | libasound2t64
+    - libcups2 | libcups2t64
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - libuuid1
+    - libsecret-1-0
+    - libdrm2
+    - libgbm1
+    - libxkbcommon0
+    - libxcomposite1
+    - libxdamage1
+    - libxfixes3
+    - libxrandr2
+    - libpango-1.0-0
+    - libcairo2
+    - xdg-utils
+    - fonts-liberation

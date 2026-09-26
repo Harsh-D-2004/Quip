@@ -68,25 +68,50 @@ Thumbs.db
 desktop.ini
 
 # ─── Electron builder ────────────────────────────────────────────────────────
-quip-frontend/release/
-quip-frontend/*.dmg
-quip-frontend/*.exe
-quip-frontend/*.AppImage
-quip-frontend/*.deb
-quip-frontend/*.snap
-quip-frontend/*.blockmap
+release/
+build-staging/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.snap
+*.blockmap
 
 # ─── Playwright ──────────────────────────────────────────────────────────────
 test-results/
 playwright-report/
 playwright/.cache/
 
-# ─── Docker ──────────────────────────────────────────────────────────────────
-# Keep docker-compose.yml tracked; ignore generated volumes/overrides
-docker-compose.override.yml
-
 # ─── Misc ────────────────────────────────────────────────────────────────────
 *.local
 .cache/
 .temp/
 tmp/
+
+# ─── Quip runtime state (never commit; these belong in userData) ──────────────
+quip-backend/dist/
+quip-frontend/dist/
+quip-backend/transcripts/
+quip-backend/chrome-profile/
+quip-backend/storage-state.json
+quip-backend/.env
+.testdata/
+storage-state.json
+secrets.json
+
+# ─── Stale artefacts from the pre-restructure layout ──────────────────────────
+bun.lockb
+quip-backend/.idea/
+quip-backend/*.png
+
+# ─── Landing site ────────────────────────────────────────────────────────────
+quip-landing/dist/
+quip-landing/public/downloads/
+
+# ─── Installers: never commit these ──────────────────────────────────────────
+# The .deb is ~239 MB and GitHub rejects files over 100 MB without Git LFS.
+# It is published as a GitHub Release asset; the landing page links to it.
+*.deb
+*.AppImage
+*.rpm
+*.snap

@@ -2,7 +2,7 @@
 import fs from "fs";
 import MeetBot from "../services/google_meet_bot/bot_service";
 import Logger from "../helpers/logger";
-import {getTranscriptsFilePath} from "../helpers/captionsFile"
+import {resolveTranscriptsFilePath} from "../helpers/captionsFile"
 import path from "path";
 
 class GoogleMeetBotController {
@@ -40,7 +40,7 @@ class GoogleMeetBotController {
   async getCaptions() {
     this.logger.info("getCaptions", "Request to retrieve captions");
     try {
-      const filePath = getTranscriptsFilePath()
+      const filePath = resolveTranscriptsFilePath()
       const properPath = path.join(filePath , "transcription.txt")
       const ret = fs.readFileSync(properPath, "utf8");
       this.logger.info("getCaptions", `Retrieved captions (${ret.length} characters)`);
